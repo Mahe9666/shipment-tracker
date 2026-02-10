@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shipment Tracking System</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 1600px; margin: 0 auto; }
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        h1 { color: #667eea; margin-bottom: 10px; font-size: 2.5em; }
+        .subtitle { color: #666; font-size: 1.1em; margin-bottom: 15px; }
+        .upload-section {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+        }
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 10px;
+            padding: 50px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: linear-gradient(135deg, #f8f9ff 0%, #fff5f7 100%);
+        }
+        .upload-area:hover { border-color: #764ba2; transform: translateY(-2px); }
+        .upload-area.dragover { border-color: #764ba2; transform: scale(1.02); }
+        .upload-icon { font-size: 5em; margin-bottom: 20px; }
+        input[type="file"] { display: none; }
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 40px;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            margin: 10px 5px;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            transition: all 0.3s;
+        }
+        .btn:hover:not(:disabled) { transform: translateY(-3px); }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .btn-secondary { background: linear-gradient(135deg, #89f7fe 0%, #66a6ff 100%); }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            text-align: center;
+            border-top: 4px solid #667eea;
+        }
+        .stat-number { font-size: 3em; font-weight: bold; color: #667eea; }
+        .stat-label { color: #666; margin-top: 10px; font-size: 1.1em; }
+        .table-section {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow-x: auto;
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
+        th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 10px;
+            text-align: left;
+            white-space: nowrap;
+        }
+        td { padding: 15px 10px; border-bottom: 1px solid #eee; }
+        tr:hover { background: #f8f9ff; }
+        .status-badge {
+            padding: 6px 15px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+            text-transform: capitalize;
+        }
+        .status-delivered { background: #d4edda; color: #155724; }
+        .status-in-transit { background: #cce5ff; color: #004085; }
+        .status-pending { background: #fff3cd; color: #856404; }
+        .carrier-badge {
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-size: 0.85em;
+            font-weight: 600;
+            background: #e7f3ff;
+            color: #0056b3;
+        }
+        .message {
+            padding: 18px;
+            border-radius: 12px;
+            margin: 20px 0;
+            border-left: 5px solid;
+        }
+        .success-message { background: #d4edda; color: #155724; border-left-color: #155724; }
+        .error-message { background: #f8d7da; color: #721c24; border-left-color: #721c24; }
+        .filter-section {
+            background: #f8f9ff;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        .filter-section input, .filter-section select {
+            padding: 10px 15px;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .filter-section input { flex: 1; min-width: 200px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📦 Shipment Tracking System</h1>
+            <p class="subtitle">Track shipments across DTDC, Blue Dart, Mahendra & Professional Couriers</p>
+        </div>
+
+        <div class="upload-section">
+            <h2 style="margin-bottom: 25px; color: #667eea;">📤 Upload Shipment Data</h2>
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📁</div>
+                <h3 style="color: #667eea;">Drag & Drop Excel File Here</h3>
+                <p style="color: #666; margin: 15px 0;">or</p>
+                <button class="btn" onclick="document.getElementById('fileInput').click()">📂 Choose File</button>
+                <input type="file" id="fileInput" accept=".xlsx,.xls" onchange="handleFileUpload(event)">
+            </div>
+            
+            <div style="margin-top: 25px; text-align: center;">
+                <button class="btn btn-secondary" onclick="downloadTemplate()">⬇️ Download Template</button>
+                <button class="btn" onclick="location.reload()">🔄 Refresh</button>
+            </div>
+            
+            <div id="messageArea"></div>
+        </div>
+
+        <div class="stats" id="statsSection" style="display: none;">
+            <div class="stat-card">
+                <div class="stat-number" id="totalShipments">0</div>
+                <div class="stat-label">Total Shipments</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="deliveredCount">0</div>
+                <div class="stat-label">Delivered</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="inTransitCount">0</div>
+                <div class="stat-label">In Transit</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="pendingCount">0</div>
+                <div class="stat-label">Pending</div>
+            </div>
+        </div>
+
+        <div class="table-section" id="tableSection" style="display: none;">
+            <h2 style="margin-bottom: 25px; color: #667eea;">📊 Shipment Details</h2>
+            
+            <div class="filter-section">
+                <input type="text" id="searchInput" placeholder="🔍 Search..." onkeyup="filterTable()">
+                <select id="statusFilter" onchange="filterTable()">
+                    <option value="">All Statuses</option>
+                    <option value="delivered">Delivered</option>
+                    <option value="in-transit">In Transit</option>
+                    <option value="pending">Pending</option>
+                </select>
+                <select id="carrierFilter" onchange="filterTable()">
+                    <option value="">All Carriers</option>
+                    <option value="DTDC">DTDC India</option>
+                    <option value="Blue Dart">Blue Dart</option>
+                    <option value="Mahendra">Mahendra Logistics</option>
+                    <option value="Professional">Professional Couriers</option>
+                </select>
+            </div>
+
+            <table id="shipmentsTable">
+                <thead>
+                    <tr>
+                        <th>SO Number</th>
+                        <th>Packing Number</th>
+                        <th>Shipment Date</th>
+                        <th>Shipment Number</th>
+                        <th>Status</th>
+                        <th>Carrier Name</th>
+                        <th>Tracking Number</th>
+                        <th>Expected Delivery</th>
+                        <th>Delivery Date</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        let shipments = [];
+
+        const uploadArea = document.getElementById('uploadArea');
+        uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+        uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
+        });
+
+        function handleFileUpload(event) { handleFile(event.target.files[0]); }
+
+        function handleFile(file) {
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+                    processShipments(jsonData);
+                    showMessage(`✅ Loaded ${jsonData.length} shipments successfully!`, 'success');
+                } catch (error) {
+                    showMessage('❌ Error: ' + error.message, 'error');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function processShipments(data) {
+            shipments = data.map(row => ({
+                soNumber: row['SO Number'] || '',
+                packingNumber: row['Packing Number'] || '',
+                shipmentDate: formatDate(row['Shipment Date']),
+                shipmentNumber: row['Shipment Number'] || '',
+                status: (row['Status'] || 'pending').toLowerCase(),
+                carrierName: row['Carrier Name'] || '',
+                trackingNumber: String(row['Tracking Number'] || ''),
+                expectedDelivery: formatDate(row['Expected Delivery Date']),
+                deliveryDate: formatDate(row['Delivery Date'])
+            }));
+            renderTable();
+            updateStats();
+        }
+
+        function formatDate(d) {
+            if (!d) return '';
+            if (typeof d === 'string') return d;
+            if (d instanceof Date) return d.toLocaleDateString('en-IN');
+            if (typeof d === 'number') {
+                const date = new Date((d - 25569) * 86400 * 1000);
+                return date.toLocaleDateString('en-IN');
+            }
+            return '';
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+            shipments.forEach((s, i) => {
+                const row = tbody.insertRow();
+                row.setAttribute('data-index', i);
+                row.innerHTML = `
+                    <td><strong>${s.soNumber}</strong></td>
+                    <td>${s.packingNumber}</td>
+                    <td>${s.shipmentDate}</td>
+                    <td>${s.shipmentNumber}</td>
+                    <td><span class="status-badge status-${s.status}">${s.status}</span></td>
+                    <td><span class="carrier-badge">${s.carrierName}</span></td>
+                    <td><code style="background:#f0f0f0;padding:5px 10px;border-radius:5px;">${s.trackingNumber}</code></td>
+                    <td>${s.expectedDelivery}</td>
+                    <td>${s.deliveryDate}</td>
+                `;
+            });
+            document.getElementById('statsSection').style.display = 'grid';
+            document.getElementById('tableSection').style.display = 'block';
+        }
+
+        function filterTable() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const status = document.getElementById('statusFilter').value.toLowerCase();
+            const carrier = document.getElementById('carrierFilter').value.toLowerCase();
+            
+            document.querySelectorAll('#tableBody tr').forEach(row => {
+                const i = row.getAttribute('data-index');
+                const s = shipments[i];
+                const match = (!search || s.soNumber.toLowerCase().includes(search) || s.trackingNumber.toLowerCase().includes(search)) &&
+                              (!status || s.status === status) &&
+                              (!carrier || s.carrierName.toLowerCase().includes(carrier.toLowerCase()));
+                row.style.display = match ? '' : 'none';
+            });
+        }
+
+        function updateStats() {
+            document.getElementById('totalShipments').textContent = shipments.length;
+            document.getElementById('deliveredCount').textContent = shipments.filter(s => s.status === 'delivered').length;
+            document.getElementById('inTransitCount').textContent = shipments.filter(s => s.status.includes('transit')).length;
+            document.getElementById('pendingCount').textContent = shipments.filter(s => s.status === 'pending').length;
+        }
+
+        function downloadTemplate() {
+            const template = [
+                {
+                    'SO Number': 'PLVCPI-IND-9844',
+                    'Packing Number': 'PKG-33531',
+                    'Shipment Date': '02/02/2026',
+                    'Shipment Number': 'SHP-33203',
+                    'Status': 'delivered',
+                    'Carrier Name': 'Professional Couriers',
+                    'Tracking Number': 'HYD93169337',
+                    'Expected Delivery Date': '',
+                    'Delivery Date': '03/02/2026'
+                },
+                {
+                    'SO Number': 'PLVCPI-IND-9859',
+                    'Packing Number': 'PKG-33494',
+                    'Shipment Date': '02/02/2026',
+                    'Shipment Number': 'SHP-33182',
+                    'Status': 'delivered',
+                    'Carrier Name': 'DTDC India',
+                    'Tracking Number': 'H57950428',
+                    'Expected Delivery Date': '',
+                    'Delivery Date': '05/02/2026'
+                },
+                {
+                    'SO Number': 'PLVCPI-IND-9926',
+                    'Packing Number': 'PKG-33527',
+                    'Shipment Date': '02/02/2026',
+                    'Shipment Number': 'SHP-33183',
+                    'Status': 'in-transit',
+                    'Carrier Name': 'Mahendra Logistics',
+                    'Tracking Number': '8003001500',
+                    'Expected Delivery Date': '12/02/2026',
+                    'Delivery Date': ''
+                }
+            ];
+            const ws = XLSX.utils.json_to_sheet(template);
+            ws['!cols'] = [18,18,15,18,12,25,20,20,15].map(wch => ({wch}));
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Shipments');
+            XLSX.writeFile(wb, 'Shipment_Order_Template.xlsx');
+            showMessage('✅ Template downloaded!', 'success');
+        }
+
+        function showMessage(msg, type) {
+            document.getElementById('messageArea').innerHTML = 
+                `<div class="message ${type}-message">${msg}</div>`;
+            setTimeout(() => document.getElementById('messageArea').innerHTML = '', 5000);
+        }
+    </script>
+</body>
+</html>
